@@ -12,7 +12,9 @@ typedef struct color_data {
 } color;
 
 
-color *color_init() 
+color *color_init();
 color *colorcpy(color *og);
+
+void color_setint(color *c, int data);
 
 
