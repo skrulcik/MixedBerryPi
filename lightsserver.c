@@ -13,6 +13,8 @@
 #include "lightsserver.h"
 
 #define LISTEN_PORT "8080"
+#define SETCMD 'S'
+#define GETCMD 'G'
 
 /* Private Functions */
 void *setup_client_thread(void *);
@@ -61,11 +63,11 @@ void handle_client(int connfd) {
         printf("In loop\n");
         printf("buf is %s\n", buf);
         switch (buf[0]) {
-            case 's':
+            case SETCMD:
                 // Set
                 sprintf(response, "Done setting...\n");
                 break;
-            case 'g':
+            case GETCMD:
                 // Get
                 sprintf(response, "R:%d G:%d B:%d\n", 234, 12, 86);
                 break;
