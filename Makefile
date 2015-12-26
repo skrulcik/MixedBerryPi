@@ -15,6 +15,11 @@ lightsserver.o: lightsserver.c csapp.h
 
 lightsserver: lightsserver.o csapp.o
 
+rgb_client.o: client/rgb_client.c csapp.h
+	$(CC) $(CFLAGS) -c client/rgb_client.c
+
+rgb_client: rgb_client.o csapp.o
+
 clean:
-	rm -f *~ *.o lightsserver
+	rm -f *~ *.o lightsserver rgb_client
 

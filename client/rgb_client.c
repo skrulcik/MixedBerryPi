@@ -7,19 +7,19 @@
 #include <string.h>
 #include "csapp.h"
 
-#define RGB_PORT 8080
+#define RGB_PORT "8080"
 #define RGB_HOST "newpi.local"
 
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <hex color>\n", argv[1]);
+        fprintf(stderr, "Usage: %s <hex color>\n", argv[0]);
         return 1;
     }
 
     char message[50];
     int clientfd = Open_clientfd(RGB_HOST, RGB_PORT);
-    int color = (int)strtol(argv[2], NULL, 16);
+    int color = (int)strtol(argv[1], NULL, 0);
     sprintf(message, "SET %08X\n", color);
 
     Rio_writen(clientfd, message, strlen(message));
