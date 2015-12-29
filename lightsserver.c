@@ -5,6 +5,7 @@
  * Server program meant to run on Raspberry Pi to control RGB LED light strips
  *      as part of MixedBerryPi project.
  */
+#include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,8 +14,8 @@
 #include "rgbstrip.h"
 
 #define LISTEN_PORT "8080"
-#define SETCMD 'S'
-#define GETCMD 'G'
+#define RESP_OK "HTTP/1.1 200 OK\r\nContent-Type:text/html\r\n\r\n<html><head><title>Color Set</title></head><body><h1>Success!!</h1></body></html>"
+#define RESP_ERR "HTTP/1.1 400 Bad Request\r\nContent-Type:text/html\r\n\r\n<html><head><title>Color Not Set</title></head><body><h1>Failure -_-</h1></body></html>"
 
 /* Private Functions */
 void *setup_client_thread(void *);
@@ -60,40 +61,56 @@ void *setup_client_thread(void *connfd_ptr) {
     return NULL;
 }
 
+
+/* get_properties - reads request from `rp` and fills `buf` with the POST
+ *     properties. Returns size of properties string if successful, 0 on fail.
+ */
+int get_properties(rio_t *rp, char *buf) {
+    char c, capbuf[MAXLINE];
+    int i, content_length = 0;
+    do {
+        Rio_readlineb(rp, buf, MAXLINE);
+        for (i=0; i < strlen(buf); i++)
+            capbuf[i] = toupper(buf[i]);
+        if (strstr(capbuf, "CONTENT-LENGTH:") != NULL) {
+            sscanf(buf, "%*s%d", &content_length);
+        }
+    } while (strcmp(buf, "\r\n"));
+    
+    buf[0] = '\0';
+    i = 0;
+    while (i < content_length && Rio_readnb(rp, &c, 1) == 1) {
+        strncat(buf, &c, 1);
+        i++;
+    }
+    assert(strlen(buf) == content_length); // Change to IF to handle errors
+    return content_length;
+}
+    
+
 void handle_client(int connfd) {
-    size_t n;
-    char buf[MAXLINE], response[MAXLINE];
+    char buf[MAXLINE], *response;
     int color_data = 0;
     rio_t rio;
     Rio_readinitb(&rio, connfd);
-    memset(response, 0, MAXLINE);
 
-    while ((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0) {
-        switch (buf[0]) {
-            case SETCMD:
-                if (sscanf(buf, "%*s %x", &color_data) == 1) {
-                    color c;
-                    color_setint(&c, color_data);
-                    rgb_set(rs, &c);
-                } else {
-                    char *err_msg = "Failed to set. Original Message:";
-                    sprintf(response, "%s %s\n", err_msg, buf);
-                }
-                break;
-            case GETCMD:
-                // Get
-                sprintf(response, "R:%d G:%d B:%d\n", 234, 12, 86);
-                break;
-            default:
-                sprintf(response, "%s\n", "e Command misunderstood");
-                break;
+    if (get_properties(&rio, buf)) {
+        if (sscanf(buf, "color=%%23%x", &color_data)) {
+            printf("Color Request: %x\n", color_data);
+            color c;
+            color_setint(&c, (color_data<<8) | 0xFF);
+            rgb_set(rs, &c);
+            response = RESP_OK;
+        } else {
+            response = RESP_ERR;
         }
-        if (strlen(response) != 0) {
-            printf("Sending response: %s\n", response);
-            Rio_writen(connfd, response, strlen(response));
-        }
-        response[0] = '\0';
+    } else {
+        response = RESP_ERR;
     }
+    
+    printf(response);
+
+    Rio_writen(connfd, response, strlen(response)); 
 }
 
 void close_all() {
