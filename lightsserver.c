@@ -14,6 +14,7 @@
 #include "rgbstrip.h"
 
 #define LISTEN_PORT "8080"
+
 #define RESP_OK 1 
 #define RESP_ERR 0 
 
@@ -21,7 +22,7 @@
 void *setup_client_thread(void *);
 void handle_client(int connfd);
 int get_properties(rio_t *rp, char *buf);
-void format_response(char *response_buf, int buf_size, char *message, int status);
+void format_response(char *response_buf, int buf_size, char *headmsg, char *bodymsg, int status);
 void close_all();
 
 static int should_receive = 1;
@@ -65,31 +66,38 @@ void *setup_client_thread(void *connfd_ptr) {
     
 
 void handle_client(int connfd) {
-#if DEBUG
-    printf("=======================================\n");
-#endif
     char buf[MAXLINE], response[MAXBUF];
-    int color_data = 0;
     rio_t rio;
     Rio_readinitb(&rio, connfd);
 
-    if (get_properties(&rio, buf)) {
-        if (sscanf(buf, "color=%%23%x", &color_data)) {
-            printf("Color Request: %x\n", color_data);
-            color c;
-            color_setint(&c, (color_data<<8) | 0xFF);
-            rgb_set(rs, &c);
-            format_response(response, MAXBUF, "Success!", RESP_OK);
-        } else {
-            format_response(response, MAXBUF, "Error parsing \"color\" property.", RESP_ERR);
-        }
-    } else {
-        format_response(response, MAXBUF, "Error retrieving properties from request.", RESP_ERR);
-    }
+    Rio_readlineb(&rio, buf, MAXLINE);
+    if (strstr(buf, "POST") == buf) {
 #if DEBUG
-    printf(response);
-    printf("\n=======================================\n\n\n");
+        printf("=======================================\n");
 #endif
+        int color_data = 0;
+        if (get_properties(&rio, buf)) {
+            if (sscanf(buf, "color=%%23%x", &color_data)) {
+                printf("Color Request: %x\n", color_data);
+                color c;
+                color_setint(&c, (color_data<<8) | 0xFF);
+                rgb_set(rs, &c);
+                char redirect[MAXLINE];
+                sprintf(redirect,  "<meta http-equiv=\"refresh\" content=\"0; url=http://%s\">", "newpi.local/lights/index.html");
+                format_response(response, MAXBUF, redirect, "Success!", RESP_OK);
+            } else {
+                format_response(response, MAXBUF, NULL, "Error parsing \"color\" property.", RESP_ERR);
+            }
+        } else {
+            format_response(response, MAXBUF, NULL, "Error retrieving properties from request.", RESP_ERR);
+        }
+#if DEBUG
+        printf(response);
+        printf("\n=======================================\n\n\n");
+#endif
+    } else {
+        sprintf(response, "HTTP/1.1 404 Not Found\r\n\r\n");
+    }
     Rio_writen(connfd, response, strlen(response)); 
     Close(connfd);
 }
@@ -103,6 +111,7 @@ int get_properties(rio_t *rp, char *buf) {
     int i, content_length = 0;
     do {
         Rio_readlineb(rp, buf, MAXLINE);
+        printf(buf);
         for (i=0; i < strlen(buf); i++)
             capbuf[i] = toupper(buf[i]);
         if (strstr(capbuf, "CONTENT-LENGTH:") != NULL) {
@@ -120,10 +129,7 @@ int get_properties(rio_t *rp, char *buf) {
     return content_length;
 }
 
-void format_response(char *response_buf, int buf_size, char *message, int status) {
-    int body_size = buf_size;
-    if (message != NULL)
-        body_size -= strlen(message);
+void format_response(char *response_buf, int buf_size, char *headmsg, char *bodymsg, int status) {
     char body[MAXBUF]; body[0] = '\0';
     
     if (status == RESP_OK) {
@@ -138,11 +144,13 @@ void format_response(char *response_buf, int buf_size, char *message, int status
     strcat(response_buf, "Content-type: text/html\r\n");
     strcat(response_buf, "Content-length: ");
     
-    if (message != NULL) {
-        sprintf(body, "<!DOCTYPE html><html><head><title>lightsserver Response</title></head><body>");
-        strcat(body, message);
-        strcat(body, "</body></html>");
-    }
+    sprintf(body, "<!DOCTYPE html><html><head><title>lightsserver Response</title>");
+    if (headmsg != NULL)
+        strcat(body, headmsg);
+    strcat(body, "</head><body>");
+    if (bodymsg != NULL)
+        strcat(body, bodymsg);
+    strcat(body, "</body></html>");
     int bodylen = strlen(body);
     if (bodylen > 0 && strlen(response_buf) + 10 + bodylen < buf_size) {
         sprintf(response_buf, "%s%d\r\n\r\n", response_buf, bodylen);
