@@ -11,19 +11,31 @@
 #define RGB_HOST "newpi.local"
 
 int main(int argc, char *argv[]) {
-
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <hex color>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <hex color (no '#')>\n", argv[0]);
         return 1;
     }
 
-    char message[50];
+    char c, *color, message[MAXBUF];
     int clientfd = Open_clientfd(RGB_HOST, RGB_PORT);
-    int color = (int)strtol(argv[1], NULL, 0);
-    sprintf(message, "SET %08X\n", color);
+    rio_t rio;
+    Rio_readinitb(&rio, clientfd);
+
+    color = argv[1];
+    sprintf(message, "POST / HTTP/1.1\r\n");
+    strcat(message, "Host: newpi.local:8080\r\n");
+    sprintf(message, "%sContent-Length: %lu\r\n", message, 9 + strlen(color));
+    strcat(message, "\r\n");
+    sprintf(message, "%scolor=%%23%s", message, color);
+    
+    printf("Request:\n%s\n\n\n", message);
 
     Rio_writen(clientfd, message, strlen(message));
 
+    printf("Response:\n");
+    while (Rio_readnb(&rio, &c, 1) == 1) 
+        printf("%c", c);
+    printf("\n\n");
     Close(clientfd);
 
 
