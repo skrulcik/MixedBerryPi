@@ -15,6 +15,8 @@
 
 #define LISTEN_PORT "8080"
 
+#define RESP_NC 3
+#define RESP_NOTFOUND 2
 #define RESP_OK 1 
 #define RESP_ERR 0 
 
@@ -82,9 +84,7 @@ void handle_client(int connfd) {
                 color c;
                 color_setint(&c, (color_data<<8) | 0xFF);
                 rgb_set(rs, &c);
-                char redirect[MAXLINE];
-                sprintf(redirect,  "<meta http-equiv=\"refresh\" content=\"0; url=http://%s\">", "newpi.local/lights/index.html");
-                format_response(response, MAXBUF, redirect, "Success!", RESP_OK);
+                format_response(response, MAXBUF, NULL, NULL, RESP_NC);
             } else {
                 format_response(response, MAXBUF, NULL, "Error parsing \"color\" property.", RESP_ERR);
             }
@@ -93,10 +93,10 @@ void handle_client(int connfd) {
         }
 #if DEBUG
         printf(response);
-        printf("\n=======================================\n\n\n");
+        printf("=======================================\n\n\n");
 #endif
     } else {
-        sprintf(response, "HTTP/1.1 404 Not Found\r\n\r\n");
+        format_response(response, MAXBUF, NULL, NULL, RESP_NOTFOUND);
     }
     Rio_writen(connfd, response, strlen(response)); 
     Close(connfd);
@@ -111,7 +111,6 @@ int get_properties(rio_t *rp, char *buf) {
     int i, content_length = 0;
     do {
         Rio_readlineb(rp, buf, MAXLINE);
-        printf(buf);
         for (i=0; i < strlen(buf); i++)
             capbuf[i] = toupper(buf[i]);
         if (strstr(capbuf, "CONTENT-LENGTH:") != NULL) {
@@ -132,31 +131,41 @@ int get_properties(rio_t *rp, char *buf) {
 void format_response(char *response_buf, int buf_size, char *headmsg, char *bodymsg, int status) {
     char body[MAXBUF]; body[0] = '\0';
     
-    if (status == RESP_OK) {
+    switch (status) {
+    case RESP_OK:
         sprintf(response_buf, "HTTP/1.1 200 OK\r\n");
-    } else {
-#if DEBUG
-        assert(status == RESP_ERR);
-#endif
+        break;
+    case RESP_ERR:
         sprintf(response_buf, "HTTP/1.1 400 Client Error\r\n");
+        break;
+    case RESP_NC:
+        sprintf(response_buf, "HTTP/1.1 204 No Content\r\n\r\n");
+        break;
+    case RESP_NOTFOUND:
+        sprintf(response_buf, "HTTP/1.1 404 Not Found\r\n\r\n");
+        break;
+    default:
+        return;
     }
-    
-    strcat(response_buf, "Content-type: text/html\r\n");
-    strcat(response_buf, "Content-length: ");
-    
-    sprintf(body, "<!DOCTYPE html><html><head><title>lightsserver Response</title>");
-    if (headmsg != NULL)
-        strcat(body, headmsg);
-    strcat(body, "</head><body>");
-    if (bodymsg != NULL)
-        strcat(body, bodymsg);
-    strcat(body, "</body></html>");
-    int bodylen = strlen(body);
-    if (bodylen > 0 && strlen(response_buf) + 10 + bodylen < buf_size) {
-        sprintf(response_buf, "%s%d\r\n\r\n", response_buf, bodylen);
-        strcat(response_buf, body);
-    } else {
-        strcat(response_buf, "0\r\n\r\n");
+         
+    if (status != RESP_NC) { 
+        strcat(response_buf, "Content-type: text/html\r\n");
+        strcat(response_buf, "Content-length: ");
+        
+        sprintf(body, "<!DOCTYPE html><html><head><title>lightsserver Response</title>");
+        if (headmsg != NULL)
+            strcat(body, headmsg);
+        strcat(body, "</head><body>");
+        if (bodymsg != NULL)
+            strcat(body, bodymsg);
+        strcat(body, "</body></html>\n");
+        int bodylen = strlen(body);
+        if (bodylen > 0 && strlen(response_buf) + 10 + bodylen < buf_size) {
+            sprintf(response_buf, "%s%d\r\n\r\n", response_buf, bodylen);
+            strcat(response_buf, body);
+        } else {
+            strcat(response_buf, "0\r\n\r\n");
+        }
     }
 }
 
