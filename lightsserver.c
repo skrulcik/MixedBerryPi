@@ -91,6 +91,7 @@ void handle_client(int connfd) {
     printf("\n=======================================\n\n\n");
 #endif
     Rio_writen(connfd, response, strlen(response)); 
+    Close(connfd);
 }
 
 
