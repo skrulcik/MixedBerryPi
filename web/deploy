@@ -1,0 +1,10 @@
+#!/bin/bash
+
+mkdir -p /var/www/html/lights
+
+rm -rf /var/www/html/lights/*
+
+cp -r ./* /var/www/html/lights/
+
+
+
