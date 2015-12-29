@@ -14,12 +14,14 @@
 #include "rgbstrip.h"
 
 #define LISTEN_PORT "8080"
-#define RESP_OK "HTTP/1.1 200 OK\r\nContent-Type:text/html\r\n\r\n<html><head><title>Color Set</title></head><body><h1>Success!!</h1></body></html>"
-#define RESP_ERR "HTTP/1.1 400 Bad Request\r\nContent-Type:text/html\r\n\r\n<html><head><title>Color Not Set</title></head><body><h1>Failure -_-</h1></body></html>"
+#define RESP_OK 1 
+#define RESP_ERR 0 
 
 /* Private Functions */
 void *setup_client_thread(void *);
 void handle_client(int connfd);
+int get_properties(rio_t *rp, char *buf);
+void format_response(char *response_buf, int buf_size, char *message, int status);
 void close_all();
 
 static int should_receive = 1;
@@ -60,6 +62,36 @@ void *setup_client_thread(void *connfd_ptr) {
     handle_client(connfd);
     return NULL;
 }
+    
+
+void handle_client(int connfd) {
+#if DEBUG
+    printf("=======================================\n");
+#endif
+    char buf[MAXLINE], response[MAXBUF];
+    int color_data = 0;
+    rio_t rio;
+    Rio_readinitb(&rio, connfd);
+
+    if (get_properties(&rio, buf)) {
+        if (sscanf(buf, "color=%%23%x", &color_data)) {
+            printf("Color Request: %x\n", color_data);
+            color c;
+            color_setint(&c, (color_data<<8) | 0xFF);
+            rgb_set(rs, &c);
+            format_response(response, MAXBUF, "Success!", RESP_OK);
+        } else {
+            format_response(response, MAXBUF, "Error parsing \"color\" property.", RESP_ERR);
+        }
+    } else {
+        format_response(response, MAXBUF, "Error retrieving properties from request.", RESP_ERR);
+    }
+#if DEBUG
+    printf(response);
+    printf("\n=======================================\n\n\n");
+#endif
+    Rio_writen(connfd, response, strlen(response)); 
+}
 
 
 /* get_properties - reads request from `rp` and fills `buf` with the POST
@@ -86,31 +118,37 @@ int get_properties(rio_t *rp, char *buf) {
     assert(strlen(buf) == content_length); // Change to IF to handle errors
     return content_length;
 }
+
+void format_response(char *response_buf, int buf_size, char *message, int status) {
+    int body_size = buf_size;
+    if (message != NULL)
+        body_size -= strlen(message);
+    char body[MAXBUF]; body[0] = '\0';
     
-
-void handle_client(int connfd) {
-    char buf[MAXLINE], *response;
-    int color_data = 0;
-    rio_t rio;
-    Rio_readinitb(&rio, connfd);
-
-    if (get_properties(&rio, buf)) {
-        if (sscanf(buf, "color=%%23%x", &color_data)) {
-            printf("Color Request: %x\n", color_data);
-            color c;
-            color_setint(&c, (color_data<<8) | 0xFF);
-            rgb_set(rs, &c);
-            response = RESP_OK;
-        } else {
-            response = RESP_ERR;
-        }
+    if (status == RESP_OK) {
+        sprintf(response_buf, "HTTP/1.1 200 OK\r\n");
     } else {
-        response = RESP_ERR;
+#if DEBUG
+        assert(status == RESP_ERR);
+#endif
+        sprintf(response_buf, "HTTP/1.1 400 Client Error\r\n");
     }
     
-    printf(response);
-
-    Rio_writen(connfd, response, strlen(response)); 
+    strcat(response_buf, "Content-type: text/html\r\n");
+    strcat(response_buf, "Content-length: ");
+    
+    if (message != NULL) {
+        sprintf(body, "<!DOCTYPE html><html><head><title>lightsserver Response</title></head><body>");
+        strcat(body, message);
+        strcat(body, "</body></html>");
+    }
+    int bodylen = strlen(body);
+    if (bodylen > 0 && strlen(response_buf) + 10 + bodylen < buf_size) {
+        sprintf(response_buf, "%s%d\r\n\r\n", response_buf, bodylen);
+        strcat(response_buf, body);
+    } else {
+        strcat(response_buf, "0\r\n\r\n");
+    }
 }
 
 void close_all() {
