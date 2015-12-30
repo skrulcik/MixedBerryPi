@@ -2,7 +2,6 @@
 <html>
     <head>
         <title>Mixed Berry Pi Lights Mixer</title>
-
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/css/materialize.min.css">
         <link rel="stylesheet" href="css/style.css">
     </head>
@@ -14,11 +13,39 @@
         </nav>
         <div class="container">
             <div class="row">
-                <form class="col s12" method="post" action="http://newpi.local:8080/">
+                <form class="col s12" onsubmit="return sendColor()">
                     <div class="row">
-                        <div class="input-field col s4 offset-s4 color-wrapper">
-                            <input type="color" name="color" value="#ca372a"/>
+                        <div class="col s8 m7 offset-s2">
+                            <div class="row valign-wrapper">
+                                <div class="col s2"><p class="valign right-align">Red</p></div>
+                                <div class="col s10">
+                                    <p class="range-field">
+                                        <input class="redbar" type="range" id="col-r" name="r" min="0" max="255" value="255"/>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="row valign-wrapper">
+                                <div class="col s2"><p class="valign right-align">Green</p></div>
+                                <div class="col s10">
+                                    <p class="range-field">
+                                        <input class="greenbar" type="range" id="col-g" name="g" min="0" max="255" value="128"/>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="row valign-wrapper">
+                                <div class="col s2"><p class="valign right-align">Blue</p></div>
+                                <div class="col s10">
+                                    <p class="range-field">
+                                        <input class="bluebar" type="range" id="col-b" name="b" min="0" max="255" value="148"/>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
+                        <div class="col s2 hide-on-med-and-up"></div>
+                        <div id="color-preview" class="col s8 offset-s2 m4 offset-m1">
+                            <!-- Color Preview -->
+                        </div>
+                        <div class="col s2 hide-on-med-and-up"></div>
                     </div>
                     <div class="row">
                         <div class="input-field col s4 offset-s4">

@@ -4,8 +4,28 @@ nav {
     color: #ffffff;
 }
 
-.color-wrapper input {
-    width: 100%;
-    height: 5em;
+#color-preview {
+    margin-top: 2em;
+    height: 8em;
+    border-radius: 1em;
+    background-color: #0088FF;
+    border: 1px solid #FFF;
 }
+
+.slide {
+    margin: 10px;
+}
+
+.redbar {
+    background: #c0392b;
+    color: #c0392b;
+}
+.greenbar {
+    background: #27ae60;
+}
+.bluebar {
+    background: #2980b9;
+}
+
+
 
