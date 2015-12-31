@@ -3,7 +3,7 @@
 #
 CC = gcc
 CFLAGS = -g -Wall -DDEBUG=1
-LDFLAGS = -lpthread
+LDFLAGS = -lpthread -lwiringPi
 
 all: lightsserver
 
@@ -11,13 +11,13 @@ color.o: color.c color.h csapp.h
 	$(CC) $(CFLAGS) -c color.c
 
 rgbstrip.o: rgbstrip.c rgbstrip.h color.h
-	$(CC) $(CFLAGS) -c rgbstrip.c
+	$(CC) $(CFLAGS) -c rgbstrip.c $(LDFLAGS)
 
 csapp.o: csapp.c csapp.h
-	$(CC) $(CFLAGS) -c csapp.c
+	$(CC) $(CFLAGS) -c csapp.c $(LDFLAGS)
 
 lightsserver.o: lightsserver.c csapp.h
-	$(CC) $(CFLAGS) -c lightsserver.c
+	$(CC) $(CFLAGS) -c lightsserver.c $(LDFLAGS)
 
 lightsserver: lightsserver.o csapp.o rgbstrip.o color.o
 

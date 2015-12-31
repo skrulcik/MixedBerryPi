@@ -20,6 +20,10 @@
 #define RESP_OK 1 
 #define RESP_ERR 0 
 
+#define RPIN 8
+#define GPIN 9
+#define BPIN 10
+
 /* Private Functions */
 void *setup_client_thread(void *);
 void handle_client(int connfd);
@@ -37,13 +41,14 @@ int main(int argc, char *argv[]) {
     socklen_t clientlen = sizeof(clientaddr);
     printf("Lights server starting on port %s....\n", LISTEN_PORT);
 
-    rs = (rgbstrip *)malloc(sizeof(rs));
+    
+    rgb_setup();
     color c;
     c.r = 0;
     c.g = 0;
     c.b = 0;
     c.a = 0;
-    rgb_set(rs, &c);
+    rs = rgb_init(&c, RPIN, GPIN, BPIN);
 
     listenfd = Open_listenfd(LISTEN_PORT);
     while (should_receive) {
@@ -54,6 +59,7 @@ int main(int argc, char *argv[]) {
         Pthread_create(&tid, NULL, setup_client_thread, connfd_ptr);
     }
 
+    rgb_free(rs);
     printf("Lights server terminating...\n");
     return 0;
 }
