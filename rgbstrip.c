@@ -6,6 +6,7 @@
  */
 #include <stdio.h>
 #include <wiringPi.h>
+#include <softPwm.h>
 #include "csapp.h"
 #include "rgbstrip.h"
 
@@ -27,10 +28,13 @@ rgbstrip *rgb_init(color *c, int r, int g, int b) {
     rgbstrip *rs = (rgbstrip *)Malloc(sizeof(rgbstrip));
     rs->rpin = r;
     pinMode(rs->rpin, OUTPUT);
+    softPwmCreate(rs->rpin, 0, 100);
     rs->gpin = g;
     pinMode(rs->gpin, OUTPUT);
+    softPwmCreate(rs->gpin, 0, 100);
     rs->bpin = b;
     pinMode(rs->bpin, OUTPUT);
+    softPwmCreate(rs->bpin, 0, 100);
     rgb_set(rs, c);
     return rs;
 }
@@ -50,19 +54,9 @@ void rgb_set(rgbstrip *rs, color *c) {
 }
 
 void rgb_refreshpins(rgbstrip *rs) {
-    if (rs->c.r > 127)
-        digitalWrite(rs->rpin, HIGH);
-    else
-        digitalWrite(rs->rpin, LOW);
-    printf("%d: %s\n", rs->rpin, (rs->c.r > 127) ? "HIGH":"LOW");
-    if (rs->c.g > 127)
-        digitalWrite(rs->gpin, HIGH);
-    else
-        digitalWrite(rs->gpin, LOW);
-    if (rs->c.b > 127)
-        digitalWrite(rs->bpin, HIGH);
-    else
-        digitalWrite(rs->bpin, LOW);
+    softPwmWrite(rs->rpin, (rs->c.r * 100)/255);
+    softPwmWrite(rs->gpin, (rs->c.g * 100)/255);
+    softPwmWrite(rs->bpin, (rs->c.b * 100)/255);
 }
 
 

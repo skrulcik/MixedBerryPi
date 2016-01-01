@@ -20,9 +20,9 @@
 #define RESP_OK 1 
 #define RESP_ERR 0 
 
-#define RPIN 8
-#define GPIN 9
-#define BPIN 10
+#define RPIN 23
+#define GPIN 24
+#define BPIN 25
 
 /* Private Functions */
 void *setup_client_thread(void *);
